@@ -29,6 +29,16 @@ contract SignatureDB {
     }
 
     /// @notice You can add one or multiple signatures via concatenated bytes
+    /// @dev The only requirement for `signatures` is that it is greater than
+    /// the previous bytes of signatures. This means that the set of signers
+    /// could change. So this does not strictly always add signatures. If the
+    /// new set of signatures is greater than the previous set of signatures but
+    /// has different signers, the signers from the previous set that are not
+    /// represented in the new set will be removed. What this does guarantee,
+    /// however, is that calling `addSignatures()` will always ensure that a
+    /// transaction is closer to execution than before.
+    /// TODO: Handle signature insertion on-chain, which ensure that signatures
+    /// are always increasing.
     function addSignatures(
         address gnosisSafe,
         bytes32 dataHash,
@@ -52,6 +62,8 @@ contract SignatureDB {
         // This ensures that any failure in the new signatures will
         // short-circuit. As a result, gas will not be wasted checking the old
         // signatures.
+        // TODO: You'll need to deconstruct, sort, and insert these signatures
+        // on-chain to ensure that previous signatures are never removed
         bytes memory signaturesConcat = bytes.concat(
             signatures,
             transaction.signatures

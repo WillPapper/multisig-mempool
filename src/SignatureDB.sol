@@ -13,7 +13,7 @@ contract SignatureDB {
         bytes signatures;
     }
 
-    uint256 public nonce;
+    // TODO: Add events
 
     function initializeTransaction(
         address gnosisSafe,

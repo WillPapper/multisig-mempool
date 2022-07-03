@@ -42,8 +42,8 @@ contract SignatureDBTest is Test {
         owners[2] = address(0x3);
 
         // Data encoding found via https://ethereum.stackexchange.com/questions/121854/how-to-encode-initializer-in-gnosis-safe-proxy-contract and https://github.com/5afe/safe-factories/blob/master/contracts/Safe_1_1_1_Factory.sol#L28
-        bytes memory proxyInitData = abi.encodeWithSelector(
-            GnosisSafe.setup.selector,
+        bytes memory proxyInitData = abi.encodeWithSignature(
+            "setup()",
             owners,
             3,
             address(0x0),

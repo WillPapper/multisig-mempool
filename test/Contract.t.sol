@@ -9,4 +9,10 @@ contract ContractTest is Test {
     function testExample() public {
         assertTrue(true);
     }
+
+    function testMainnetFork() public {
+        assertTrue(
+            address(0x000000000000000000000000000000000000dEaD).balance > 0
+        );
+    }
 }

@@ -6,27 +6,10 @@ import {GnosisSafe} from "../lib/safe-contracts/contracts/GnosisSafe.sol";
 import {GnosisSafeProxyFactory} from "../lib/safe-contracts/contracts/proxies/GnosisSafeProxyFactory.sol";
 
 contract SignatureDBTest is Test {
-    function setUp() public {
-        // address[] memory owners = new address[](3);
-        // owners[0] = address(0x1);
-        // owners[1] = address(0x2);
-        // owners[2] = address(0x3);
-        // GnosisSafe gnosisSafe = new GnosisSafe();
-        // gnosisSafe.setup(
-        //     owners,
-        //     2,
-        //     address(0),
-        //     "",
-        //     address(0),
-        //     address(0),
-        //     0,
-        //     payable(address(0))
-        // );
-        createProxyWithNonce();
-    }
+    function setUp() public {}
 
-    function testExample() public {
-        assertTrue(true);
+    function testCreateGnosisSafe() public {
+        createProxyWithNonce();
     }
 
     function createProxyWithNonce() public {

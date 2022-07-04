@@ -26,7 +26,8 @@ contract SignatureDBTest is Test {
         assertEq(alice, signer); // [PASS]
         // Can combine into a single 65-byte signature. See https://medium.com/mycrypto/the-magic-of-digital-signatures-on-ethereum-98fe184dc9c7
         bytes memory signature = bytes.concat(r, s, abi.encodePacked(v));
-        bytes[] memory signatures = abi.encodePacked(signature);
+        bytes[] memory signatures = new bytes[](1);
+        signatures[0] = abi.encodePacked(signature);
         signatureDB.addSignatures(address(gnosisSafe), dataHash, signatures);
     }
 

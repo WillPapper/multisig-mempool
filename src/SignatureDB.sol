@@ -7,6 +7,19 @@ contract SignatureDB {
     // Mapping of Gnosis Safe address => dataHash => Transaction
     mapping(address => mapping(bytes32 => Transaction)) transactionsForGnosisSafe;
 
+    // Mapping of Gnosis Safe address => owner => owner status of the Gnosis Safe
+    // A mapping is used so that we can look up owners in O(1) time when adding
+    // signatures. This allows for cheap writes.
+    mapping(address => mapping(address => bool)) ownersForGnosisSafe;
+    // Mapping of Gnosis Safe address => index => owner
+    // We simultaneously maintain an index so that we can loop through the list
+    // of owners. This index is sorted for the ease of constructing valid packed
+    // signatures for Gnosis, because Gnosis's execTransaction() function also
+    // requires sorting.
+    // Separating the owners and the index is broadly inspired by
+    // ERC721Enumerable.
+    mapping(address => mapping(uint256 => address)) ownerIndexForGnosisSafe;
+
     // We don't need the dataHash because that is used as the key in the mapping.
     struct Transaction {
         bytes data;

@@ -2,11 +2,19 @@
 pragma solidity 0.8.15;
 
 import "../lib/forge-std/src/Test.sol";
+import {SignatureDB} from "../src/SignatureDB.sol";
 import {GnosisSafe} from "../lib/safe-contracts/contracts/GnosisSafe.sol";
 import {GnosisSafeProxyFactory} from "../lib/safe-contracts/contracts/proxies/GnosisSafeProxyFactory.sol";
 
 contract SignatureDBTest is Test {
-    function setUp() public {}
+    SignatureDB signatureDB;
+
+    function setUp() public {
+        console.logString("Setting up");
+        signatureDB = new SignatureDB();
+    }
+
+    function testAddSignatures() public {}
 
     function testCreateGnosisSafe() public {
         createProxyWithNonce();
@@ -20,9 +28,11 @@ contract SignatureDBTest is Test {
         );
 
         address[] memory owners = new address[](3);
-        owners[0] = address(0x1);
-        owners[1] = address(0x2);
-        owners[2] = address(0x3);
+
+        // Initialize owners with private keys of 1, 2, and 3
+        owners[0] = vm.addr(1);
+        owners[1] = vm.addr(2);
+        owners[2] = vm.addr(3);
 
         // Data encoding found via https://ethereum.stackexchange.com/questions/121854/how-to-encode-initializer-in-gnosis-safe-proxy-contract and https://github.com/5afe/safe-factories/blob/master/contracts/Safe_1_1_1_Factory.sol#L28
         bytes memory proxyInitData = abi.encodeWithSignature(

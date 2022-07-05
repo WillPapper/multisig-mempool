@@ -6,7 +6,7 @@ import {ECDSA} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/
 
 contract SignatureDB {
     // Mapping of owner address => Gnosis Safe address => dataHash => Sorted array of signatures
-    mapping(address => mapping(address => mapping(bytes32 => bytes[])))
+    mapping(address => mapping(address => mapping(bytes32 => bytes)))
         public signaturesForDataHash;
 
     // Mapping of => dataHash => data
@@ -22,29 +22,39 @@ contract SignatureDB {
     function addSignatures(
         address gnosisSafe,
         bytes32 dataHash,
-        bytes[] calldata signatures
+        bytes memory signatures
     ) public {
-        for (uint256 i; i < signatures.length; ) {
+        require(
+            signatures.length % 65 == 0,
+            "Signatures must be 65 bytes long"
+        );
+
+        // Grab the signatures every 65 bytes
+        for (uint256 i; i < signatures.length; i += 65) {
+            bytes memory signature;
+            uint256 amountToLoad = i + 65;
+
+            // Based loosely on https://ethereum.stackexchange.com/questions/26434/whats-the-best-way-to-transform-bytes-of-a-signature-into-v-r-s-in-solidity
+            assembly {
+                signature := mload(add(signatures, amountToLoad))
+            }
+
             // TODO: Prevent recovering to arbitrary addresses
             // https://docs.openzeppelin.com/contracts/4.x/api/utils#ECDSA-tryRecover-bytes32-bytes-
             // The risk of this in practice may be low, because addresses other
             // than the signers are ignored during signature construction
             (address signer, ECDSA.RecoverError error) = ECDSA.tryRecover(
                 dataHash,
-                signatures[i]
+                signatures
             );
             if (error == ECDSA.RecoverError.NoError && signer != address(0)) {
                 // TODO: Determine whether you want to sort the signatures here
                 // or sort them in the getter
-                signaturesForDataHash[signer][gnosisSafe][dataHash].push(
-                    signatures[i]
-                );
-            }
-
-            // We can use unchecked here since it's not possible in practice for
-            // the array of signatures to overflow
-            unchecked {
-                ++i;
+                signaturesForDataHash[signer][gnosisSafe][dataHash] = bytes
+                    .concat(
+                        signaturesForDataHash[signer][gnosisSafe][dataHash],
+                        signature
+                    );
             }
         }
     }

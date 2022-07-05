@@ -18,7 +18,7 @@ contract SignatureDBTest is Test {
         createProxy();
     }
 
-    function testAddSignatures() public {
+    function testAddSignature() public {
         address alice = owners[0];
         bytes32 dataHash = keccak256("Signed by Alice");
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(1, dataHash);
@@ -26,9 +26,28 @@ contract SignatureDBTest is Test {
         assertEq(alice, signer); // [PASS]
         // Can combine into a single 65-byte signature. See https://medium.com/mycrypto/the-magic-of-digital-signatures-on-ethereum-98fe184dc9c7
         bytes memory signature = bytes.concat(r, s, abi.encodePacked(v));
-        bytes[] memory signatures = new bytes[](1);
-        signatures[0] = abi.encodePacked(signature);
-        signatureDB.addSignatures(address(gnosisSafe), dataHash, signatures);
+        // bytes[] memory signatures = new bytes[];
+        // signatures[0] = abi.encodePacked(signature);
+        signatureDB.addSignatures(address(gnosisSafe), dataHash, signature);
+        assertTrue(
+            signatureDB
+                .signaturesForDataHash(address(gnosisSafe), alice, dataHash)
+                .length !=
+                0 &&
+                // Comparing hashes is a quick hack to avoid needing to loop
+                // through them one by one:
+                // https://ethereum.stackexchange.com/questions/99340/error-comparing-two-bytes-memory
+                // TODO: Add a function that loops through both bytes and checks
+                // one by one, after comparing the length
+                keccak256(
+                    signatureDB.signaturesForDataHash(
+                        address(gnosisSafe),
+                        alice,
+                        dataHash
+                    )
+                ) ==
+                keccak256(signature)
+        );
     }
 
     function testCreateGnosisSafe() public {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+import "../lib/forge-std/src/Test.sol";
 import {GnosisSafe} from "../lib/safe-contracts/contracts/GnosisSafe.sol";
 import {ECDSA} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
@@ -34,19 +35,25 @@ contract SignatureDB {
             bytes memory signature;
             uint256 amountToLoad = i + 65;
 
+            console.log("Loading signature");
+
             // Based loosely on https://ethereum.stackexchange.com/questions/26434/whats-the-best-way-to-transform-bytes-of-a-signature-into-v-r-s-in-solidity
             assembly {
                 signature := mload(add(signatures, amountToLoad))
             }
+            console.log("Signature loaded");
 
             // TODO: Prevent recovering to arbitrary addresses
             // https://docs.openzeppelin.com/contracts/4.x/api/utils#ECDSA-tryRecover-bytes32-bytes-
             // The risk of this in practice may be low, because addresses other
             // than the signers are ignored during signature construction
+            console.log("Recovering signature");
             (address signer, ECDSA.RecoverError error) = ECDSA.tryRecover(
                 dataHash,
-                signatures
+                signature
             );
+            console.logBytes(signature);
+            console.log("Signature recovered");
             if (error == ECDSA.RecoverError.NoError && signer != address(0)) {
                 // TODO: Determine whether you want to sort the signatures here
                 // or sort them in the getter

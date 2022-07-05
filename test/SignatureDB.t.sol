@@ -28,7 +28,9 @@ contract SignatureDBTest is Test {
         bytes memory signature = bytes.concat(r, s, abi.encodePacked(v));
         // bytes[] memory signatures = new bytes[];
         // signatures[0] = abi.encodePacked(signature);
+        console.log("Adding signature");
         signatureDB.addSignatures(address(gnosisSafe), dataHash, signature);
+        console.log("Signature added");
         assertTrue(
             signatureDB
                 .signaturesForDataHash(address(gnosisSafe), alice, dataHash)

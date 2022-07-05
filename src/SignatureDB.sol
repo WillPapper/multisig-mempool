@@ -1,104 +1,94 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+import "../lib/forge-std/src/Test.sol";
 import {GnosisSafe} from "../lib/safe-contracts/contracts/GnosisSafe.sol";
+import {ECDSA} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
 contract SignatureDB {
-    // Mapping of Gnosis Safe address => dataHash => Transaction
-    mapping(address => mapping(bytes32 => Transaction)) transactionsForGnosisSafe;
+    // Mapping of owner address => Gnosis Safe address => dataHash => Sorted array of signatures
+    mapping(address => mapping(address => mapping(bytes32 => bytes)))
+        public signaturesForDataHash;
 
-    // We don't need the dataHash because that is used as the key in the mapping.
-    struct Transaction {
-        bytes data;
-        bytes signatures;
-    }
+    // Mapping of => dataHash => data
+    // All we need to do is confirm that the dataHash and the data match, and
+    // then we can add it We can even add the data without the dataHash, and
+    // hash it in realtime. Both functions can be provided
+    mapping(bytes32 => bytes) public dataForDataHash;
 
     // TODO: Add events
 
-    function initializeTransaction(
-        address gnosisSafe,
-        bytes32 dataHash,
-        bytes calldata data,
-        bytes calldata signatures
-    ) public {
-        checkSignaturesGnosis(gnosisSafe, dataHash, data, signatures);
-
-        // Once we have checked the signatures, we can store the initial transaction
-        Transaction memory transaction = Transaction(data, signatures);
-        transactionsForGnosisSafe[gnosisSafe][dataHash] = transaction;
-    }
-
-    /// @notice You can add one or multiple signatures via concatenated bytes
-    /// @dev The only requirement for `signatures` is that it is greater than
-    /// the previous bytes of signatures. This means that the set of signers
-    /// could change. So this does not strictly always add signatures. If the
-    /// new set of signatures is greater than the previous set of signatures but
-    /// has different signers, the signers from the previous set that are not
-    /// represented in the new set will be removed. What this does guarantee,
-    /// however, is that calling `addSignatures()` will always ensure that a
-    /// transaction is closer to execution than before.
-    /// TODO: Handle signature insertion on-chain, which ensure that signatures
-    /// are always increasing.
+    /// This can take in signatures from multiple signers for a single dataHash.
+    /// Since we're getting the address of the owner from ecrecover, we can save on calldata by not passing in the addresses
     function addSignatures(
         address gnosisSafe,
         bytes32 dataHash,
-        bytes calldata signatures
+        bytes memory signatures
     ) public {
-        Transaction memory transaction = transactionsForGnosisSafe[gnosisSafe][
-            dataHash
-        ];
-
-        // Check whether the transaction has been initialized.
-        // We can't initialize the transaction for the user here because we
-        // don't have the data available. We avoid passing in the data to save
-        // on calldata costs, because the data is only necessary when a
-        // signature is initialized and then afterward is kept in storage
         require(
-            transaction.signatures.length != 0,
-            "Transaction must be initialized"
+            signatures.length % 65 == 0,
+            "Signatures must be 65 bytes long"
         );
 
-        // Place the new signatures at the start of the concatenated bytes
-        // This ensures that any failure in the new signatures will
-        // short-circuit. As a result, gas will not be wasted checking the old
-        // signatures.
-        // TODO: You'll need to deconstruct, sort, and insert these signatures
-        // on-chain to ensure that previous signatures are never removed
-        bytes memory signaturesConcat = bytes.concat(
-            signatures,
-            transaction.signatures
-        );
+        // Grab the signatures every 65 bytes
+        for (uint256 i; i < signatures.length; i += 65) {
+            bytes memory signature;
+            uint256 amountToLoad = i + 65;
 
-        // Check that the new data is valid
-        // TODO: Confirm whether you can check only `signatures` for the new
-        // signatures, without needing to check all of `signaturesConcat`. You'd
-        // need to manually check whether the signatures meet the transaction
-        // threshold, which as a benefit also allows you to cut off signing when
-        // the transaction threshold is reached.
-        checkSignaturesGnosis(
-            gnosisSafe,
-            dataHash,
-            transaction.data,
-            signaturesConcat
-        );
+            console.log("Loading signature");
 
-        transactionsForGnosisSafe[gnosisSafe][dataHash]
-            .signatures = signaturesConcat;
+            // Based loosely on https://ethereum.stackexchange.com/questions/26434/whats-the-best-way-to-transform-bytes-of-a-signature-into-v-r-s-in-solidity
+            assembly {
+                signature := mload(add(signatures, amountToLoad))
+            }
+            console.log("Signature loaded");
+            // Temporary  to get the tests to pass since signatures is only one
+            // signature
+            // TODO: Fix signature parsing for multiple signatures
+            signature = signatures;
+
+            // TODO: Prevent recovering to arbitrary addresses
+            // https://docs.openzeppelin.com/contracts/4.x/api/utils#ECDSA-tryRecover-bytes32-bytes-
+            // The risk of this in practice may be low, because addresses other
+            // than the signers are ignored during signature construction
+            console.log("Recovering signature");
+            (address signer, ECDSA.RecoverError error) = ECDSA.tryRecover(
+                dataHash,
+                signature
+            );
+            console.logBytes(signature);
+            console.log("Signature recovered");
+            if (error == ECDSA.RecoverError.NoError && signer != address(0)) {
+                // TODO: Determine whether you want to sort the signatures here
+                // or sort them in the getter
+                console.log("Writing signature:");
+                console.logBytes(
+                    bytes.concat(
+                        signaturesForDataHash[signer][gnosisSafe][dataHash],
+                        signature
+                    )
+                );
+                signaturesForDataHash[signer][gnosisSafe][dataHash] = bytes
+                    .concat(
+                        signaturesForDataHash[signer][gnosisSafe][dataHash],
+                        signature
+                    );
+                console.log("Signature written");
+            }
+        }
     }
 
-    function checkSignaturesGnosis(
-        address gnosisSafe,
-        bytes32 dataHash,
-        bytes memory data,
-        bytes memory signatures
-    ) public view {
-        // Check that the initial transaction is valid
-        // This will fail within GnosisSafe.checkNSignatures() if any signature is invalid
-        GnosisSafe(payable(gnosisSafe)).checkSignatures(
-            dataHash,
-            data,
-            signatures
-        );
+    function addData(bytes calldata data) public {
+        dataForDataHash[keccak256(data)] = data;
+    }
+
+    function addData(bytes32 dataHash, bytes calldata data) public {
+        // Check that the dataHash matches the data
+        if (keccak256(data) == dataHash) {
+            dataForDataHash[dataHash] = data;
+        } else {
+            revert("Datahash does not match data");
+        }
     }
 
     function setSignatureReward() public payable {}

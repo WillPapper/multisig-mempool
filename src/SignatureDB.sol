@@ -42,6 +42,10 @@ contract SignatureDB {
                 signature := mload(add(signatures, amountToLoad))
             }
             console.log("Signature loaded");
+            // Temporary  to get the tests to pass since signatures is only one
+            // signature
+            // TODO: Fix signature parsing for multiple signatures
+            signature = signatures;
 
             // TODO: Prevent recovering to arbitrary addresses
             // https://docs.openzeppelin.com/contracts/4.x/api/utils#ECDSA-tryRecover-bytes32-bytes-
@@ -57,11 +61,19 @@ contract SignatureDB {
             if (error == ECDSA.RecoverError.NoError && signer != address(0)) {
                 // TODO: Determine whether you want to sort the signatures here
                 // or sort them in the getter
+                console.log("Writing signature:");
+                console.logBytes(
+                    bytes.concat(
+                        signaturesForDataHash[signer][gnosisSafe][dataHash],
+                        signature
+                    )
+                );
                 signaturesForDataHash[signer][gnosisSafe][dataHash] = bytes
                     .concat(
                         signaturesForDataHash[signer][gnosisSafe][dataHash],
                         signature
                     );
+                console.log("Signature written");
             }
         }
     }

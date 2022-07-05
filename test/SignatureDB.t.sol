@@ -16,6 +16,8 @@ contract SignatureDBTest is Test {
         console.logString("Setting up");
         signatureDB = new SignatureDB();
         createProxy();
+        console.log("Address Gnosis Safe:");
+        console.logAddress(address(gnosisSafe));
     }
 
     function testAddSignature() public {
@@ -31,9 +33,25 @@ contract SignatureDBTest is Test {
         console.log("Adding signature");
         signatureDB.addSignatures(address(gnosisSafe), dataHash, signature);
         console.log("Signature added");
+        console.log("Signature length:");
+        console.log(
+            signatureDB
+                .signaturesForDataHash(alice, address(gnosisSafe), dataHash)
+                .length
+        );
+        console.log("Signature:");
+        console.logBytes(signature);
+        console.log("Stored signature:");
+        console.logBytes(
+            signatureDB.signaturesForDataHash(
+                alice,
+                address(gnosisSafe),
+                dataHash
+            )
+        );
         assertTrue(
             signatureDB
-                .signaturesForDataHash(address(gnosisSafe), alice, dataHash)
+                .signaturesForDataHash(alice, address(gnosisSafe), dataHash)
                 .length !=
                 0 &&
                 // Comparing hashes is a quick hack to avoid needing to loop
@@ -43,13 +61,20 @@ contract SignatureDBTest is Test {
                 // one by one, after comparing the length
                 keccak256(
                     signatureDB.signaturesForDataHash(
-                        address(gnosisSafe),
                         alice,
+                        address(gnosisSafe),
                         dataHash
                     )
                 ) ==
                 keccak256(signature)
         );
+    }
+
+    function test2DArray() public {
+        // bytes[][] a = new bytes[][];
+        // a.push(bytes(1));
+        // a[0] = new bytes(1);
+        // a[1] = keccak256(abi.encodePacked(1));
     }
 
     function testCreateGnosisSafe() public {
